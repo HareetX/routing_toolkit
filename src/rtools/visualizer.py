@@ -249,7 +249,7 @@ class MiniMap:
         self.canvas.pack(side=TOP, expand=YES, fill=BOTH)
         self.draw_abs()
         self.root.resizable(False, False)
-        self.getter(self.canvas)
+        # self.getter(self.canvas)
         self.root.mainloop()
 
     def generatePoints(self):

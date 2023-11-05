@@ -1,5 +1,7 @@
 from math import ceil
 
+from numpy import ones
+
 from rtools.utils import diagonal_distance_3d, circle_space_set, oval_space_set, rect_space_set
 
 
@@ -220,7 +222,7 @@ class GridCell:
 
 
 class GridEnv:
-    def __init__(self, board_area, layers_, net_num, net_list, net_class, pad_obstacles):
+    def __init__(self, board_area, layers_, net_num, net_order, net_list, net_class, pad_obstacles, routing_area):
         """
         Create the grid environment based on dataset
 
@@ -239,7 +241,7 @@ class GridEnv:
         self.net_num = net_num
         """ the number of nets """
 
-        self.netlist, self.net_order = self.load_net_list(net_list, net_class)
+        self.netlist, self.net_order = self.load_net_list(net_order, net_list, net_class)
         """ a list of the pads from each net """
 
         self.net_obstacles = self.load_trace_items(net_list, board_area[1], board_area[3], layers_)
@@ -251,11 +253,18 @@ class GridEnv:
         self.generate_occupied_coord()
         """ a dict stores the occupied grids """
 
-    def load_net_list(self, net_list, net_class):
+        self.routing_area_graph = self.generate_routing_area(board_area, routing_area)
+
+    def load_net_list(self, order, net_list, net_class):
         net_list_tmp = []
-        net_order = list(range(self.net_num))
+
+        if len(order) == self.net_num:
+            net_order = [i-1 for i in order]
+        else:
+            net_order = list(range(self.net_num))
+
         for i in net_order:
-            net_info = net_list[i + 1]
+            net_info = net_list[i+1]
             net = Net(net_info.netID - 1, net_info.netName,
                       NetClass(net_class[net_info.netClass].track_width,
                                net_class[net_info.netClass].microvia_diameter,
@@ -372,6 +381,18 @@ class GridEnv:
             distance = net_obstacles['distance'][i]
             self.add_trace_coord(route, distance)
             i += 1
+
+    def generate_routing_area(self, board_area, routing_area):
+        routing_area_graph = - ones(self.grid_size)
+        for area in routing_area:
+            x_min = to_grid_coord_round_down(area[0][0] - board_area[1])
+            x_max = to_grid_coord_round_down(area[1][0] - board_area[1])
+            y_min = to_grid_coord_round_down(area[0][1] - board_area[3])
+            y_max = to_grid_coord_round_down(area[1][1] - board_area[3])
+            z_min = area[0][2]
+            z_max = area[1][2] + 1
+            routing_area_graph[x_min:x_max, y_min:y_max, z_min:z_max] += 1
+        return routing_area_graph
 
     def add_occupied_coord(self, hide_pos, cell_type):
         if hide_pos in self.occupied_coord:
@@ -785,14 +806,16 @@ class GridEnv:
         :return: the list of route segments
         """
         merge_route_combo = []
+        for i in range(self.net_num):
+            merge_route_combo.append([])
+
         for net in self.netlist:
             route_list = net.two_pin_net_route_list
-            merge_route_list = []
+            merge_route_list = merge_route_combo[net.net_id]
             for route in route_list:
                 for i in range(len(route) - 1):
                     start = [to_real_coord(route[i][0]), to_real_coord(route[i][1]), route[i][2]]
                     end = [to_real_coord(route[i + 1][0]), to_real_coord(route[i + 1][1]), route[i + 1][2]]
                     merge_route_list.append([start, end])
-            merge_route_combo.append(merge_route_list)
 
         return merge_route_combo

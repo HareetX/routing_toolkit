@@ -1,0 +1,15 @@
+Net-(C2-Pad2)
+Net-(U1-Pad1)
+/SDA
+/SCL
+Net-(R2-Pad1)
+Net-(R1-Pad1)
+Net-(U1-Pad14)
+Net-(U1-Pad13)
+Net-(U1-Pad12)
+Net-(U1-Pad11)
+Net-(U1-Pad10)
+Net-(C1-Pad1)
+Net-(C1-Pad2)
+GND
+VDD

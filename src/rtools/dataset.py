@@ -78,6 +78,7 @@ class Dataset:
 
         self.netList = []
         self.netNum = 0
+        self.net_order = []
 
         self.netClass = {}
 
@@ -110,14 +111,23 @@ class Dataset:
         self.layers_ = layers_
         self.layer_num = len(self.layers)
 
+        net_order_file = self.pcb_directory + '.netorder'
+        net_order = []
+        if os.path.isfile(net_order_file):
+            with open(net_order_file, "r", encoding='utf-8') as f:  # 打开文本
+                net_order = f.read().split('\n')
+                f.close()
+
         net_ignore_file = self.pcb_directory + '.netignore'
         net_ignore = []
         if os.path.isfile(net_ignore_file):
             with open(net_ignore_file, "r", encoding='utf-8') as f:  # 打开文本
-                net_ignore = f.read()
+                net_ignore = f.read().split('\n')
+                f.close()
 
         self.netList = []
         net_id = 0
+        net_name2id = {}
         for net in board.nets:
             # parse net_class class
             if net.name != '':
@@ -127,6 +137,7 @@ class Dataset:
                     ignore = True
                 board_net = Net(net.number, net.name, project.netSetting.netClassPatterns[net.name], ignore)
                 self.netList.append(board_net)
+                net_name2id[net.name] = net.number
 
             else:
                 board_net = Net(net.number, net.name, None, True)
@@ -134,6 +145,10 @@ class Dataset:
             net_id += 1
         # self.netList.pop(0)
         self.netNum = len(self.netList) - 1
+
+        self.net_order.clear()
+        for net_name in net_order:
+            self.net_order.append(net_name2id[net_name])
 
         self.pad_obstacles = []
         for footprint in board.footprints:
@@ -187,6 +202,7 @@ class Dataset:
         item_id = 0
         for net in merge_route_combo:
             net_info = self.netList[i]
+            net_id = net_info.netID
             if not net_info.is_ignore:
                 trace_items = {
                     'segment': [],
@@ -208,14 +224,15 @@ class Dataset:
                     if start[2] == end[2]:
                         width = self.netClass[net_info.netClass].track_width
                         layer = start[2]
-                        item = Segment(start_pos, end_pos, width, layer, False, i, str(item_id))
+                        item = Segment(start_pos, end_pos, width, layer, False, net_id, str(item_id))
                         # board.traceItems.append(item)
                         trace_items['segment'].append(item)
                     else:
                         size = self.netClass[net_info.netClass].microvia_diameter
                         drill = self.netClass[net_info.netClass].microvia_drill
                         layers = [self.layers[0], self.layers[1]]
-                        item = Via('micro', False, start_pos, size, drill, layers, False, False, False, i, str(item_id))
+                        item = Via('micro', False, start_pos, size, drill, layers, False, False, False, net_id,
+                                   str(item_id))
                         # board.traceItems.append(item)
                         trace_items['via'].append(item)
 
